@@ -1,0 +1,23 @@
+{
+  "name": "sps",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-prelude": "^4.1.0",
+    "purescript-console": "^4.1.0",
+    "purescript-effect": "^2.0.0",
+    "purescript-functors": "^3.0.1",
+    "purescript-maybe": "^4.0.0",
+    "purescript-lists": "^5.2.0",
+    "purescript-node-buffer": "^5.0.0",
+    "purescript-node-fs": "^5.0.0",
+    "purescript-generics-rep": "^6.0.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^4.0.0"
+  }
+}

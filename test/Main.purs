@@ -9,5 +9,5 @@ import Test.Sps
 main :: Effect Unit
 main = do
   -- log "You should add some tests."
-  -- spsMainTest
+  spsMainTest
   pure unit

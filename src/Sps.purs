@@ -68,6 +68,8 @@ subGrid numbering:
 i.e. everything is ordered "from top left to the left and then down".
 
 -}
+doIt :: Int -> String
+doIt n = "hello from doIt"
 --------------
 --
 --  Data Defs
@@ -80,17 +82,24 @@ i.e. everything is ordered "from top left to the left and then down".
 -- data SudokuChar = SudokuChar "1" | SudokuChar "2"
 -- data ToneIndex = Zero | One | Two | Three | Four | Five
 -- data SudokuChar = One | Two
+foo :: forall r. { first :: String, last :: String | r } -> String
+foo {first, last} = "first=" <> first <>",last=" <> last
 
+type Cell2 = { val :: Int}
+
+-- newtype Cell = Cell { val :: Int, status :: String}
 newtype Cell = Cell { val :: Int, status :: String}
+-- forall r. newtype Cell = Cell { val :: Int | r}
+-- newtype Cell = forall r. Cell { val :: Int | r}
 derive instance genericCell :: Generic Cell _
 instance showCell :: Show Cell where
   show = genericShow
 
 cellDefault2 = Cell { val: -1, status: ""}
 
-cellDefault :: String -> String -> Cell
-cellDefault "val" s = Cell {val: unMaybeInt $ fromString s, status: ""}
-cellDefault _ _ = cellDefault2
+-- cellDefault :: String -> String -> Cell
+-- cellDefault "val" s = Cell {val: unMaybeInt $ fromString s, status: ""}
+-- cellDefault _ _ = cellDefault2
 
 -- multiProduct req1 opt1 opt2 opt3 = req1 * opt1' * opt2' * opt3'
 --     where opt1' = fromMaybe 10 opt1
@@ -108,14 +117,16 @@ cellDefault3 val status = Cell {val: val', status: status'}
 type GridCell = Cell
 type SubGridCell = Cell
 type GridRow = Array Cell
+type SubGridRow = Array Cell
 
 type Grid = Array GridRow
+type SubGrid = Array GridRow
 -- newtype Grid = Grid (Array GridRow)
 -- derive instance genericGrid :: Generic Grid _
 -- instance showGrid :: Show Grid where
 --   show = genericShow
 
-newtype SubGrid = SubGrid (Array SubGridCell)
+-- newtype SubGrid = SubGrid (Array SubGridCell)
 
 -- newtype Note = Note { freq :: Number , durRatio :: Int }
 -- derive instance genericNote :: Generic Note _
@@ -148,6 +159,12 @@ showAbc = show "abc"
 
 -- instance showPuzzle :: Show Puzzle where
 --   show p =
+testGrid1 = [
+  [cellDefault {val: 0}, cellDefault {val: 1}, cellDefault {val: 2}, cellDefault {val: 3}, cellDefault {val: 4}, cellDefault {val: 5}, cellDefault {val: 6}, cellDefault {val: 7}, cellDefault {val: 8} ],
+  [cellDefault {val: 1}, cellDefault {val: 2}, cellDefault {val: 3}, cellDefault {val: 4}, cellDefault {val: 5}, cellDefault {val: 6}, cellDefault {val: 7}, cellDefault {val: 8}, cellDefault {val: 0} ]
+]
+
+tc = cellDefault {val: 9}
 
 
 --------------
@@ -234,33 +251,41 @@ readSudokuInput f = readTextFile UTF8 f
 
 -- doIt :: Maybe Int -> Array Int -> Int
 -- doIt n _ = maybe 0 (\x -> x) n
-doIt :: Maybe Int -> Int
-doIt mn = maybe 0 (\x -> x) mn
+-- doIt :: Maybe Int -> Int
+-- doIt mn = maybe 0 (\x -> x) mn
 
 -- unbox an Int from a Maybe
-unMaybeInt :: Maybe Int -> Int
-unMaybeInt mn = maybe 0 (\x -> x) mn
+-- unMaybeInt :: Maybe Int -> Int
+-- unMaybeInt mn = maybe 0 (\x -> x) mn
 -- toInt :: Maybe String -> Int
 -- toInt mx = maybe 0 (\x -> )
 -- toMaybeInt :: String -> Maybe Int
 -- toMaybeInt s = fromString s
-unMaybeGridRow :: Maybe GridRow -> GridRow
-unMaybeGridRow mx = maybe [] (\x -> x) mx
+-- unMaybeGridRow :: Maybe GridRow -> GridRow
+-- unMaybeGridRow mx = maybe [] (\x -> x) mx
 -- unMaybe :: Maybe a -> a -> a
 -- unMaybe ma a = maybe a (\x -> x) ma
 
-unMaybeCell :: Maybe Cell -> Cell
-unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
+-- unMaybeCell2 :: forall r . Maybe { val :: Int | r} -> Cell2
+-- unMaybeCell2 mc = maybe ( {val: -1}) (\x -> x) mc
+
+-- unMaybeCell :: Maybe Cell -> Cell
+-- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
+-- unMaybeCell :: forall r. Maybe Cell {val :: Int | r } -> Cell
+-- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
+-- unMaybeCell :: forall r. Maybe Cell (val :: Int | r ) -> Cell
+-- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
 
 toInt :: Array String -> Array Int
 -- toInt x [] =
 -- toInt x xs =
 -- toInt xs = foldr (\y a -> cons (doIt (fromString y)) a) [] xs
-toInt xs = foldr (\y a -> cons (unMaybeInt $ fromString y) a) [] xs
+-- toInt xs = foldr (\y a -> cons (unMaybeInt $ fromString y) a) [] xs
+toInt xs = foldr (\y a -> cons (fromMaybe (-1) $ fromString y) a) [] xs
 
-doIt2 :: Array (Maybe Int) -> Array Int
--- doIt2 x = foldr doIt [] x
-doIt2 x = foldr (\y a -> cons (doIt y) a) [] x
+-- doIt2 :: Array (Maybe Int) -> Array Int
+-- -- doIt2 x = foldr doIt [] x
+-- doIt2 x = foldr (\y a -> cons (doIt y) a) [] x
 
 seedPuzzle :: String -> Puzzle
 seedPuzzle x = map toInt elems
@@ -268,6 +293,9 @@ seedPuzzle x = map toInt elems
         -- elems = map (S.split (S.Pattern "\t")) rows
         elems = map (S.split (S.Pattern ",")) rows
 
+------------------
+--- Getters etc
+------------------
 -- cellField :: Cell -> String ->
 cellVal :: Cell -> Int
 cellVal (Cell {val, status }) = val
@@ -275,11 +303,16 @@ cellVal (Cell {val, status }) = val
 -- get a GridRow from a Grid
 gridRow :: Grid -> Int ->  GridRow
 -- gridRow (Grid g) n = g !! n
-gridRow g r = unMaybeGridRow $ g !! r
+-- gridRow g r = unMaybeGridRow $ g !! r
+gridRow g r = fromMaybe [] $ g !! r
 
 gridCell :: Grid -> Int -> Int -> GridCell
 -- gridCell g r c = (gridRow r) !! c
-gridCell g r c = unMaybeCell $ (unMaybeGridRow $ g !! r) !! c
+-- gridCell g r c = unMaybeCell $ (unMaybeGridRow $ g !! r) !! c
+gridCell g r c = fromMaybe (cellDefault {val: -1}) $ (fromMaybe [] $ g !! r) !! c
+
+-- subGrid :: Grid -> Int -> SubGrid
+-- subGrid 0 = []
 
 --------------------
 --
@@ -287,3 +320,4 @@ gridCell g r c = unMaybeCell $ (unMaybeGridRow $ g !! r) !! c
 --
 --------------------
 foreign import readPuzzleFile :: String -> String
+foreign import cellDefault :: forall r. {|r} -> Cell

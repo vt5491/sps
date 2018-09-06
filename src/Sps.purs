@@ -157,6 +157,10 @@ showAbcLoop = do
 showAbc :: String
 showAbc = show "abc"
 
+-------
+-- Constants and test variables
+--------
+
 -- instance showPuzzle :: Show Puzzle where
 --   show p =
 testGrid1 = [
@@ -165,6 +169,22 @@ testGrid1 = [
 ]
 
 tc = cellDefault {val: 9}
+
+-- https://www.websudoku.com/?level=1&set_id=1096937905
+fullGrid1 :: Grid
+fullGrid1 = [
+  gridRowFromString "000051460",
+  gridRowFromString "050600000",
+  gridRowFromString "103804007",
+  gridRowFromString "000082001",
+  gridRowFromString "572000638",
+  gridRowFromString "400360000",
+  gridRowFromString "600108204",
+  gridRowFromString "000007080",
+  gridRowFromString "017240000"
+]
+
+gr0 = fromMaybe [] $ fullGrid1 !! 0
 
 
 --------------
@@ -189,7 +209,7 @@ spsMain = do
   pure unit
 
 doSomething :: Int
-doSomething = 7
+doSomething = 8
 
 -- "unixize" a file by removing cr's (\r or 0x'0d')
 -- dos2unix :: String -> String
@@ -269,6 +289,8 @@ readSudokuInput f = readTextFile UTF8 f
 -- unMaybeCell2 :: forall r . Maybe { val :: Int | r} -> Cell2
 -- unMaybeCell2 mc = maybe ( {val: -1}) (\x -> x) mc
 
+fromMaybeCell :: Maybe Cell -> Cell
+fromMaybeCell mc = fromMaybe (cellDefault {}) mc
 -- unMaybeCell :: Maybe Cell -> Cell
 -- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
 -- unMaybeCell :: forall r. Maybe Cell {val :: Int | r } -> Cell
@@ -293,6 +315,28 @@ seedPuzzle x = map toInt elems
         -- elems = map (S.split (S.Pattern "\t")) rows
         elems = map (S.split (S.Pattern ",")) rows
 
+--------
+-- SubGrid Functions
+--------
+-- return a linear array of all the cells in a subgrid.  SubGrid 0 is the upper
+-- left corner, subgrid 2 is the top right, and subgrid 8 in bottmost right.
+subGridVect :: Grid -> Int -> Array Cell
+-- subGridVect g n = [cellDefault {val : 7}]
+subGridVect g n = [ gridCell g row col]
+  where
+        -- initOffset =  case n of
+        --                 0 -> 0
+        --                 1 -> 4
+        --                 2 -> 7
+        --                 3 -> 27
+        --                 4 -> 30
+        --                 5 -> 33
+        --                 6 -> 54
+        --                 7 -> 57
+        --                 8 -> 60
+        row = mod n 3
+        col = n
+
 ------------------
 --- Getters etc
 ------------------
@@ -310,6 +354,25 @@ gridCell :: Grid -> Int -> Int -> GridCell
 -- gridCell g r c = (gridRow r) !! c
 -- gridCell g r c = unMaybeCell $ (unMaybeGridRow $ g !! r) !! c
 gridCell g r c = fromMaybe (cellDefault {val: -1}) $ (fromMaybe [] $ g !! r) !! c
+
+gridRowFromString :: String -> GridRow
+-- gridRowFromString s = [cellDefault {val: 1}]
+-- gridRowFromString s = [cellDefault {val: firstInt}]
+-- gridRowFromString s = foldl (\x a -> snoc a $ cellDefault {val: 1 }) [] $ (S.split (S.Pattern "") s)
+-- gridRowFromString s = foldl (\x a -> snoc a $ cellDefault {val: x }) [] ?what
+-- gridRowFromString s = foldl (\x a -> accumGridRow a firstInt) [] charArray
+-- gridRowFromString s = foldl accumGridRow [] [1,2,3]
+gridRowFromString s = foldr (\x a -> cons (cellDefault {val : x}) a) [] intArray
+  where charArray = S.split (S.Pattern "") s
+        intArray = foldr (\x a -> cons (fromMaybe 0 (fromString x)) a) [] charArray
+        -- firstChar = fromMaybe "" $ charArray !! 0
+        -- firstInt = fromMaybe 0  (fromString firstChar)
+
+-- accumGridRow :: GridRow -> Int -> GridRow
+-- accumGridRow a n = snoc a $ cellDefault {val: n}
+
+-- accumGridRow :: Int -> GridRow -> GridRow
+-- accumGridRow n a = snoc a $ cellDefault {val: n}
 
 -- subGrid :: Grid -> Int -> SubGrid
 -- subGrid 0 = []

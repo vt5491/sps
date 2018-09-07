@@ -10,7 +10,7 @@ import Sps
 
 main :: Effect Unit
 main = do
-  let a = doSomething
-  log $ "Hello sailor!" <> show a
+  -- let a = doSomething
+  -- log $ "Hello sailor!" <> show a
   -- log =<< readTextFile UTF8 "input.json"
   spsMain

@@ -28,7 +28,11 @@ exports.cellDefault = function (parms) {
   //   cell.status = parms.status
   // }
   cell.val = parms.val || 0;
-  cell.status = parms.status || "";
+  // cell.status = parms.status || "";
+  // cell.row = parms.row || -1;
+  cell.row = "row" in parms ? parms.row : -1;
+  cell.col = "col" in parms ? parms.col : -1;
+  // cell.col = parms.col || -1;
   // return { val: 1, status: ""}
   return cell;
 }

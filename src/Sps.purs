@@ -14,7 +14,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List as L
 -- import Data.Set
-import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons)
+import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons, reverse)
 
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
@@ -37,8 +37,6 @@ import Partial.Unsafe (unsafePartial)
        0 1 2 3 4 5 6 7 8 |
        <-  gridSizeX  -> \/
 
--- lower bottom corner is (0,0)
--- Top right corner is (8,8)
 Top left corner is (0,0)
 Bottom right corner is (8,8)
 
@@ -54,12 +52,6 @@ correspond with the rules of suduko where a user is presented with numbers
 and referencing the cells themselves (and not their content), most logic
 in this code is 0-8 based.
 
--- subGrid numbering:
---       6 7 8
---       3 4 5
---       0 1 2
---
--- i.e. everything is ordered "to the right and then up".
 subGrid numbering:
       0 1 2
       3 4 5
@@ -75,44 +67,13 @@ doIt n = "hello from doIt"
 --  Data Defs
 --
 --------------
--- instance showEffect :: Show Effect Unit where
---   show = genericShow
--- data SudokuChar = SudokuChar "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "_"
--- type SudokuChar = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "_"
--- data SudokuChar = SudokuChar "1" | SudokuChar "2"
--- data ToneIndex = Zero | One | Two | Three | Four | Five
--- data SudokuChar = One | Two
 foo :: forall r. { first :: String, last :: String | r } -> String
 foo {first, last} = "first=" <> first <>",last=" <> last
 
-type Cell2 = { val :: Int}
-
--- newtype Cell = Cell { val :: Int, status :: String}
-newtype Cell = Cell { val :: Int, status :: String}
--- forall r. newtype Cell = Cell { val :: Int | r}
--- newtype Cell = forall r. Cell { val :: Int | r}
+newtype Cell = Cell { val :: Int, row :: Int, col :: Int}
 derive instance genericCell :: Generic Cell _
 instance showCell :: Show Cell where
   show = genericShow
-
-cellDefault2 = Cell { val: -1, status: ""}
-
--- cellDefault :: String -> String -> Cell
--- cellDefault "val" s = Cell {val: unMaybeInt $ fromString s, status: ""}
--- cellDefault _ _ = cellDefault2
-
--- multiProduct req1 opt1 opt2 opt3 = req1 * opt1' * opt2' * opt3'
---     where opt1' = fromMaybe 10 opt1
---           opt2' = fromMaybe 20 opt2
---           opt3' = fromMaybe 30 opt3
-cellDefault3 :: Maybe Int -> Maybe String -> Cell
-cellDefault3 val status = Cell {val: val', status: status'}
-    where val' = fromMaybe (-1) val
-          status' = fromMaybe "" status
-
--- cellDefault4 ::
-
-
 
 type GridCell = Cell
 type SubGridCell = Cell
@@ -121,27 +82,9 @@ type SubGridRow = Array Cell
 
 type Grid = Array GridRow
 type SubGrid = Array GridRow
--- newtype Grid = Grid (Array GridRow)
--- derive instance genericGrid :: Generic Grid _
--- instance showGrid :: Show Grid where
---   show = genericShow
-
--- newtype SubGrid = SubGrid (Array SubGridCell)
-
--- newtype Note = Note { freq :: Number , durRatio :: Int }
--- derive instance genericNote :: Generic Note _
--- instance showNote :: Show Note where
---   show = genericShow
--- newtype  Row = Row
--- type Row = List Int
--- type Puzzle = List Row
 type Row = Array Int
 type Puzzle = Array Row
 
--- showNote :: NoteType -> String
--- showNote n = "note.freq=" <> show n.freq
--- instance showRow :: Show Row where
---   show r = "row2=" <> show r
 showRow :: Row -> String
 showRow r = "row=" <> show r
 
@@ -173,19 +116,28 @@ tc = cellDefault {val: 9}
 -- https://www.websudoku.com/?level=1&set_id=1096937905
 fullGrid1 :: Grid
 fullGrid1 = [
-  gridRowFromString "000051460",
-  gridRowFromString "050600000",
-  gridRowFromString "103804007",
-  gridRowFromString "000082001",
-  gridRowFromString "572000638",
-  gridRowFromString "400360000",
-  gridRowFromString "600108204",
-  gridRowFromString "000007080",
-  gridRowFromString "017240000"
+  gridRowFromString 0 "000051460",
+  gridRowFromString 1 "050600000",
+  gridRowFromString 2 "103804007",
+  gridRowFromString 3 "000082001",
+  gridRowFromString 5 "572000638",
+  gridRowFromString 5 "400360000",
+  gridRowFromString 6 "600108204",
+  gridRowFromString 7 "000007080",
+  gridRowFromString 8 "017240000"
 ]
+
+fg :: Grid
+fg = fullGrid1
+
 
 gr0 = fromMaybe [] $ fullGrid1 !! 0
 
+gridWidth :: Int
+gridWidth = 9
+
+gridHeight :: Int
+gridHeight = gridWidth
 
 --------------
 --
@@ -194,26 +146,14 @@ gr0 = fromMaybe [] $ fullGrid1 !! 0
 --------------
 spsMain :: Effect Unit
 spsMain = do
-  -- r <- readSudokuInput "input.json"
-  -- r <- readSudokuInput "data/puzzles/ez_6843808492_v2.tsv"
-  -- log $ r <> "-xyz"
-  -- r do
-  --   log $ "r=" <> r
-  --   pure unit
-  -- let r = readPuzzleFile "data/puzzles/ez_6843808492_v3.tsv"
   let r = removeComments $ removeCr $ readPuzzleFile "data/puzzles/ez_6843808492.csv"
   log $ r <> "-js"
   let puz = seedPuzzle r
-  -- log $ "puz=" <> show puz
   log $ "puz=" <> showPuzzle puz
   pure unit
 
 doSomething :: Int
 doSomething = 8
-
--- "unixize" a file by removing cr's (\r or 0x'0d')
--- dos2unix :: String -> String
--- dos2unix s = S.replace (S.Pattern "\r") (S.Replacement "") s
 
 -- "unixize" a file by removing cr's (\r or 0x'0d')
 removeCr :: String -> String
@@ -227,11 +167,7 @@ removeComments :: String -> String
 removeComments s = RE.replace noCommentsRe "" s
 
 noCommentsRe :: RE.Regex
--- noComments = unsafePartial $ fromRight $ RE.regex "[^]--" REF.noFlags
--- noComments = unsafePartial $ fromRight $ RE.regex """^--""" REF.noFlags
--- noComments = unsafePartial $ fromRight $ RE.regex """^--.*\n""" globalMultiline
 noCommentsRe = unsafePartial $ fromRight $ RE.regex """^--.*\n""" globalMultiline
--- noComments = unsafePartial $ fromRight $ RE.regex "\\^--" REF.noFlags
 
 globalMultiline :: REF.RegexFlags
 globalMultiline = REF.RegexFlags
@@ -241,141 +177,97 @@ globalMultiline = REF.RegexFlags
   , sticky: false
   , unicode: false
   }
--- global :: RegexFlags
--- global = RegexFlags
---   { global: true
---     , ignoreCase: false
---     , multiline: false
---     , sticky: false
---     , unicode: false
---   }
-
-
--- SudokuChar :: String -> String
--- SudokuChar s = case s of
 
 readSudokuInput :: String -> Effect String
 readSudokuInput f = readTextFile UTF8 f
 
--- readSudokuInput :: String -> String
--- readSudokuInput f = do
---   do  (readTextFile UTF8 f)
---     pure unit
---   pure unit
--- parseTsv :: Effect String -> String
--- parseTsv s =
--- seedPuzzle :: String -> Puzzle
--- seedPuzzle
--- parsePuzzleRow :: String -> List
--- parsePuzzleRow r =
-
--- doIt :: Maybe Int -> Array Int -> Int
--- doIt n _ = maybe 0 (\x -> x) n
--- doIt :: Maybe Int -> Int
--- doIt mn = maybe 0 (\x -> x) mn
-
--- unbox an Int from a Maybe
--- unMaybeInt :: Maybe Int -> Int
--- unMaybeInt mn = maybe 0 (\x -> x) mn
--- toInt :: Maybe String -> Int
--- toInt mx = maybe 0 (\x -> )
--- toMaybeInt :: String -> Maybe Int
--- toMaybeInt s = fromString s
--- unMaybeGridRow :: Maybe GridRow -> GridRow
--- unMaybeGridRow mx = maybe [] (\x -> x) mx
--- unMaybe :: Maybe a -> a -> a
--- unMaybe ma a = maybe a (\x -> x) ma
-
--- unMaybeCell2 :: forall r . Maybe { val :: Int | r} -> Cell2
--- unMaybeCell2 mc = maybe ( {val: -1}) (\x -> x) mc
-
 fromMaybeCell :: Maybe Cell -> Cell
 fromMaybeCell mc = fromMaybe (cellDefault {}) mc
--- unMaybeCell :: Maybe Cell -> Cell
--- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
--- unMaybeCell :: forall r. Maybe Cell {val :: Int | r } -> Cell
--- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
--- unMaybeCell :: forall r. Maybe Cell (val :: Int | r ) -> Cell
--- unMaybeCell mc = maybe (Cell {val: -1, status: ""}) (\x -> x) mc
 
 toInt :: Array String -> Array Int
--- toInt x [] =
--- toInt x xs =
--- toInt xs = foldr (\y a -> cons (doIt (fromString y)) a) [] xs
--- toInt xs = foldr (\y a -> cons (unMaybeInt $ fromString y) a) [] xs
 toInt xs = foldr (\y a -> cons (fromMaybe (-1) $ fromString y) a) [] xs
-
--- doIt2 :: Array (Maybe Int) -> Array Int
--- -- doIt2 x = foldr doIt [] x
--- doIt2 x = foldr (\y a -> cons (doIt y) a) [] x
 
 seedPuzzle :: String -> Puzzle
 seedPuzzle x = map toInt elems
   where rows = S.split (S.Pattern "\n") x
-        -- elems = map (S.split (S.Pattern "\t")) rows
         elems = map (S.split (S.Pattern ",")) rows
 
 --------
 -- SubGrid Functions
 --------
+-- return the cell index that indicates the start of where the 3x3 subGrid
+-- starts. e.g. subGrid 3 is at index 27.
+subGridIndex :: Int -> Int
+subGridIndex n = ((n / 3) * (gridWidth * 3)) + (mod n 3) * 3
+
 -- return a linear array of all the cells in a subgrid.  SubGrid 0 is the upper
 -- left corner, subgrid 2 is the top right, and subgrid 8 in bottmost right.
 subGridVect :: Grid -> Int -> Array Cell
 -- subGridVect g n = [cellDefault {val : 7}]
-subGridVect g n = [ gridCell g row col]
+-- subGridVect g n = [ gridCell g row col]
+subGridVect g n = [
+  gridCellByIndex g sgStart, gridCellByIndex g $ sgStart + 1, gridCellByIndex g $ sgStart + 2,
+  gridCellByIndex g $ sgStart + gridWidth, gridCellByIndex g $ sgStart + gridWidth + 1, gridCellByIndex g $ sgStart + gridWidth + 2,
+  gridCellByIndex g $ sgStart + 2 * gridWidth, gridCellByIndex g $ sgStart + 2 * gridWidth + 1, gridCellByIndex g $ sgStart + 2 * gridWidth + 2
+]
   where
-        -- initOffset =  case n of
-        --                 0 -> 0
-        --                 1 -> 4
-        --                 2 -> 7
-        --                 3 -> 27
-        --                 4 -> 30
-        --                 5 -> 33
-        --                 6 -> 54
-        --                 7 -> 57
-        --                 8 -> 60
-        row = mod n 3
-        col = n
+        sgStart = subGridIndex n
 
+------------------
+-- Utility Functions
+------------------
+indexToRowCol :: Int -> Array Int
+indexToRowCol n = [n / gridWidth, mod n gridWidth]
 ------------------
 --- Getters etc
 ------------------
 -- cellField :: Cell -> String ->
 cellVal :: Cell -> Int
-cellVal (Cell {val, status }) = val
+cellVal (Cell {val, row, col }) = val
 
 -- get a GridRow from a Grid
 gridRow :: Grid -> Int ->  GridRow
--- gridRow (Grid g) n = g !! n
--- gridRow g r = unMaybeGridRow $ g !! r
 gridRow g r = fromMaybe [] $ g !! r
 
+-- get gridCell by row and col.
 gridCell :: Grid -> Int -> Int -> GridCell
--- gridCell g r c = (gridRow r) !! c
--- gridCell g r c = unMaybeCell $ (unMaybeGridRow $ g !! r) !! c
 gridCell g r c = fromMaybe (cellDefault {val: -1}) $ (fromMaybe [] $ g !! r) !! c
 
-gridRowFromString :: String -> GridRow
--- gridRowFromString s = [cellDefault {val: 1}]
--- gridRowFromString s = [cellDefault {val: firstInt}]
--- gridRowFromString s = foldl (\x a -> snoc a $ cellDefault {val: 1 }) [] $ (S.split (S.Pattern "") s)
--- gridRowFromString s = foldl (\x a -> snoc a $ cellDefault {val: x }) [] ?what
--- gridRowFromString s = foldl (\x a -> accumGridRow a firstInt) [] charArray
--- gridRowFromString s = foldl accumGridRow [] [1,2,3]
-gridRowFromString s = foldr (\x a -> cons (cellDefault {val : x}) a) [] intArray
+gridCellByRowCol :: Grid -> Int -> Int -> GridCell
+gridCellByRowCol g r c = gridCell g r c
+
+gridCellByIndex :: Grid -> Int -> GridCell
+-- gridCellByIndex g n = fromMaybe (cellDefault {val: -1}) $ g !! n
+gridCellByIndex g n = gridCellByRowCol g row col
+  where rowCol = indexToRowCol n
+        row = (fromMaybe (-1) (rowCol !! 0))
+        col = (fromMaybe (-1) (rowCol !! 1))
+-- first arg is the grid row.  Second is the values for that row in a string.
+-- gridRowFromString ::  String -> GridRow
+-- gridRowFromString s = foldr (\x a -> cons (cellDefault {val : x}) a) [] intArray
+--   where charArray = S.split (S.Pattern "") s
+--         intArray = foldr (\x a -> cons (fromMaybe 0 (fromString x)) a) [] charArray
+--         -- firstChar = fromMaybe "" $ charArray !! 0
+--         -- firstInt = fromMaybe 0  (fromString firstChar)
+
+-- gridRowFromString2 :: Int -> String -> GridRow
+-- gridRowFromString2 :: Int -> String -> Array {val :: Int, col :: Int, row :: Int}
+-- -- gridRowFromString2 n s = [cellDefault {val: 7}]
+-- gridRowFromString2 row s = reverse $ infoArray.rowAccum
+--   where charArray = S.split (S.Pattern "") s
+--         intArray = foldr (\x a -> cons (fromMaybe 0 (fromString x)) a) [] charArray
+--         infoArray = foldr (\x a -> {info: {row: a.info.row, col: a.info.col + 1}, rowAccum: cons {val: x, row: a.info.row, col: a.info.col} a.rowAccum})
+--           {info: {row: row, col: 0}, rowAccum: []} intArray
+
+gridRowFromString :: Int -> String -> GridRow
+-- gridRowFromString2 n s = [cellDefault {val: 7}]
+-- gridRowFromString row s = reverse $ infoArray.rowAccum
+gridRowFromString row s =  infoArray.rowAccum
   where charArray = S.split (S.Pattern "") s
         intArray = foldr (\x a -> cons (fromMaybe 0 (fromString x)) a) [] charArray
-        -- firstChar = fromMaybe "" $ charArray !! 0
-        -- firstInt = fromMaybe 0  (fromString firstChar)
-
--- accumGridRow :: GridRow -> Int -> GridRow
--- accumGridRow a n = snoc a $ cellDefault {val: n}
-
--- accumGridRow :: Int -> GridRow -> GridRow
--- accumGridRow n a = snoc a $ cellDefault {val: n}
-
--- subGrid :: Grid -> Int -> SubGrid
--- subGrid 0 = []
+        infoArray = foldr (\x a -> {info: {row: a.info.row, col: a.info.col - 1},
+          rowAccum: cons (cellDefault {val: x, row: a.info.row, col: a.info.col}) a.rowAccum})
+          {info: {row: row, col: gridWidth - 1}, rowAccum: []} intArray
 
 --------------------
 --

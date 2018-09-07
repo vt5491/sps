@@ -1,11 +1,12 @@
-module Test.Sps where
+module Test.Sps (spsMainTest) where
 
 import Prelude
+-- import Prelude (Unit, discard, pure, unit)
 import Data.Maybe
 
 
 import Effect (Effect)
-import Effect.Console (log)
+-- import Effect.Console (log)
 
 import Test.Unit (suite, test, timeout)
 import Test.Unit.Main (runTest)
@@ -47,15 +48,15 @@ tg2 = [
 -- 017240000
 fullGrid1 :: Grid
 fullGrid1 = [
-  gridRowFromString "000051460",
-  gridRowFromString "050600000",
-  gridRowFromString "103804007",
-  gridRowFromString "000082001",
-  gridRowFromString "572000638",
-  gridRowFromString "400360000",
-  gridRowFromString "600108204",
-  gridRowFromString "000007080",
-  gridRowFromString "017240000"
+  gridRowFromString 0 "000051460",
+  gridRowFromString 1 "050600000",
+  gridRowFromString 2 "103804007",
+  gridRowFromString 3 "000082001",
+  gridRowFromString 4 "572000638",
+  gridRowFromString 5 "400360000",
+  gridRowFromString 6 "600108204",
+  gridRowFromString 7 "000007080",
+  gridRowFromString 8 "017240000"
 ]
 
 spsMainTest = runTest do
@@ -81,12 +82,28 @@ spsMainTest = runTest do
       -- Assert.assert "gridCell gets correct GridCell val" $ cellVal $ gridCell 0 0 == 0
   suite "GridRow ops" do
     test "gridRowFromString" do
-      Assert.assert "gridRowFromString works" $ length (gridRowFromString "000051460") == 9
+      Assert.assert "gridRowFromString works" $ length (gridRowFromString 1 "000051460") == 9
   suite "SubGrid ops" do
+    test "subGridIndex" do
+      Assert.assert "subGridIndex 0 is correct" $ subGridIndex 0 == 0
+      Assert.assert "subGridIndex 1 is correct" $ subGridIndex 1 == 3
+      Assert.assert "subGridIndex 3 is correct" $ subGridIndex 3 == 27
+      Assert.assert "subGridIndex 8 is correct" $ subGridIndex 8 == 60
     test "subGridVect" do
-      let sgVect1 = subGridVect fullGrid1 0
-      Assert.assert "result is proper length" $ length sgVect1 == 9
-      Assert.assert "second row, second col is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 4) ==  5
+      let sgVect1 = subGridVect fullGrid1 1
+      -- Assert.assert "result is proper length" $ length sgVect1 == 9
+      Assert.assert "subgrid row 0, col 1 is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 1) ==  5
+      Assert.assert "subgrid row 1, col 0 is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 3) ==  6
+      Assert.assert "subgrid row 2, col 2 is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 8) ==  4
+      -- Assert.assert "second row, second col is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 4) ==  5
+      pure unit
+    test "indexToRowCol" do
+      Assert.assert "indexToRowCol 0 works" $ fromMaybe 0 (indexToRowCol 0 !! 0 )== 0
+      Assert.assert "indexToRowCol 1 returns proper row" $ (fromMaybe 0 $ (indexToRowCol 1 !! 0)) == 0
+      Assert.assert "indexToRowCol 1 returns proper col " $ (fromMaybe 0 $ (indexToRowCol 1 !! 0)) == 0
+      Assert.assert "indexToRowCol 9 returns properl row" $ (fromMaybe 0 $ (indexToRowCol 9 !! 0)) == 1
+      Assert.assert "indexToRowCol 80 return proper row" $ (fromMaybe 0 $ (indexToRowCol 80 !! 0)) == 8
+      Assert.assert "indexToRowCol 80 return proper col" $ (fromMaybe 0 $ (indexToRowCol 80 !! 1)) == 8
 
 debugMe :: Effect Unit
 debugMe = do

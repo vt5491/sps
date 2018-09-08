@@ -68,7 +68,8 @@ doIt n = "hello from doIt"
 --
 --------------
 foo :: forall r. { first :: String, last :: String | r } -> String
-foo {first, last} = "first=" <> first <>",last=" <> last
+foo {first,
+   last} = "first=" <> first <>",last=" <> last
 
 newtype Cell = Cell { val :: Int, row :: Int, col :: Int}
 derive instance genericCell :: Generic Cell _
@@ -78,10 +79,12 @@ instance showCell :: Show Cell where
 type GridCell = Cell
 type SubGridCell = Cell
 type GridRow = Array Cell
+type GridCol = Array Cell
 type SubGridRow = Array Cell
 
 type Grid = Array GridRow
-type SubGrid = Array GridRow
+-- type SubGrid = Array GridRow
+type SubGrid = Array Cell
 type Row = Array Int
 type Puzzle = Array Row
 
@@ -192,6 +195,16 @@ seedPuzzle x = map toInt elems
   where rows = S.split (S.Pattern "\n") x
         elems = map (S.split (S.Pattern ",")) rows
 
+-- rowHasVal fullGrid1 2 7
+-- 2 is the row, 7 is the val
+rowHasVal :: Grid -> Int -> Int -> Boolean
+rowHasVal g rowNum val = (length $ filter (\x -> cellVal x == val) row ) > 0
+  where row = gridRow g rowNum
+
+colHasVal :: Grid -> Int -> Int -> Boolean
+colHasVal g colNum val = (length $ filter (\x -> cellVal x == val) col ) > 0
+  -- where row = gridRow g rowNum
+  where col = gridCol g colNum
 --------
 -- SubGrid Functions
 --------
@@ -213,11 +226,41 @@ subGridVect g n = [
   where
         sgStart = subGridIndex n
 
+-- return the list of values that are "closed".  This is primarly here, so we
+-- calculate 'subGridOpenVals', which is dependent on this function.
+subGridClosedVals :: SubGrid -> Array Int
+subGridClosedVals sg = map (\x -> cellVal x) closedCells
+  where closedCells = filter (\x -> (cellVal x) /= 0) sg
+
+-- return the list of values that are "open" (e.g not "satisfied" with a value )
+-- in a SubGrid.  This is so we know what value we need to try to fill.
+-- This is basically just the inversion of 'subGridClosedVals'
+subGridOpenVals :: SubGrid -> Array Int
+-- subGridOpenVals sg = []
+subGridOpenVals sg = filter (\x -> not $ elem x closedVals) $ 1..gridWidth
+  where closedVals = subGridClosedVals sg
+-- subGridOpenVals sg = map (\x -> not $ elem x closedVals) closedVals
+-- subGridOpenVals sg = map (\x -> cellVal x) openCells
+--   where
+--         closedCells = filter (\x -> (cellVal x) /= 0) sg
+--         closedVals = map (\x -> cellVal x) closedCells
+--         openCells = filter (\cell -> not $ elem (cellVal cell) closedVals) sg
+-- subGridCell_rowColTest :: SubGridCell ->
+-- given a subGrid cell, determine what values cannot be here by doing a
+-- grid level row and column check.
+subGridCell_ineligibilityTest :: SubGridCell -> Array Int
+-- subGridCell_ineligibilityTest c = [4,6]
+subGridCell_ineligibilityTest c = [4,6]
+
+
 ------------------
 -- Utility Functions
 ------------------
 indexToRowCol :: Int -> Array Int
 indexToRowCol n = [n / gridWidth, mod n gridWidth]
+
+emptyCellArray :: Array Cell
+emptyCellArray = []
 ------------------
 --- Getters etc
 ------------------
@@ -228,6 +271,13 @@ cellVal (Cell {val, row, col }) = val
 -- get a GridRow from a Grid
 gridRow :: Grid -> Int ->  GridRow
 gridRow g r = fromMaybe [] $ g !! r
+
+-- get a GridCol from a Grid
+gridCol :: Grid -> Int ->  GridCol
+-- gridCol g c = foldr (\r a  -> cons $ (fromMaybe (cellDefault {}) $ r !! c) a)
+gridCol g c = foldr (\r a -> cons (fromMaybe (cellDefault {}) $ r !! c) $ a)
+  -- emptyCellArray g
+  [] g
 
 -- get gridCell by row and col.
 gridCell :: Grid -> Int -> Int -> GridCell
@@ -242,22 +292,6 @@ gridCellByIndex g n = gridCellByRowCol g row col
   where rowCol = indexToRowCol n
         row = (fromMaybe (-1) (rowCol !! 0))
         col = (fromMaybe (-1) (rowCol !! 1))
--- first arg is the grid row.  Second is the values for that row in a string.
--- gridRowFromString ::  String -> GridRow
--- gridRowFromString s = foldr (\x a -> cons (cellDefault {val : x}) a) [] intArray
---   where charArray = S.split (S.Pattern "") s
---         intArray = foldr (\x a -> cons (fromMaybe 0 (fromString x)) a) [] charArray
---         -- firstChar = fromMaybe "" $ charArray !! 0
---         -- firstInt = fromMaybe 0  (fromString firstChar)
-
--- gridRowFromString2 :: Int -> String -> GridRow
--- gridRowFromString2 :: Int -> String -> Array {val :: Int, col :: Int, row :: Int}
--- -- gridRowFromString2 n s = [cellDefault {val: 7}]
--- gridRowFromString2 row s = reverse $ infoArray.rowAccum
---   where charArray = S.split (S.Pattern "") s
---         intArray = foldr (\x a -> cons (fromMaybe 0 (fromString x)) a) [] charArray
---         infoArray = foldr (\x a -> {info: {row: a.info.row, col: a.info.col + 1}, rowAccum: cons {val: x, row: a.info.row, col: a.info.col} a.rowAccum})
---           {info: {row: row, col: 0}, rowAccum: []} intArray
 
 gridRowFromString :: Int -> String -> GridRow
 -- gridRowFromString2 n s = [cellDefault {val: 7}]
@@ -268,6 +302,12 @@ gridRowFromString row s =  infoArray.rowAccum
         infoArray = foldr (\x a -> {info: {row: a.info.row, col: a.info.col - 1},
           rowAccum: cons (cellDefault {val: x, row: a.info.row, col: a.info.col}) a.rowAccum})
           {info: {row: row, col: gridWidth - 1}, rowAccum: []} intArray
+
+-- actually, I don't need this as long as subGrid is in a Vect form
+subGridCellByIndex :: SubGrid -> Int -> SubGridCell
+-- subGridCellByIndex sg n = cellDefault {}
+--TODO: implement this
+subGridCellByIndex sg n = cellDefault {}
 
 --------------------
 --

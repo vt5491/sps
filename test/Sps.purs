@@ -83,6 +83,11 @@ spsMainTest = runTest do
   suite "GridRow ops" do
     test "gridRowFromString" do
       Assert.assert "gridRowFromString works" $ length (gridRowFromString 1 "000051460") == 9
+  suite "getters ops" do
+    test "gridCol" do
+      Assert.assert "gridCol returns array of proper length" $ length (gridCol fullGrid1 1)  == gridHeight
+      Assert.assert "gridCol 1 has a 5 in second pos (pos=1)" $ (cellVal $ fromMaybe (cellDefault {}) (gridCol fullGrid1 1 !! 1))  == 5
+        --
   suite "SubGrid ops" do
     test "subGridIndex" do
       Assert.assert "subGridIndex 0 is correct" $ subGridIndex 0 == 0
@@ -104,6 +109,27 @@ spsMainTest = runTest do
       Assert.assert "indexToRowCol 9 returns properl row" $ (fromMaybe 0 $ (indexToRowCol 9 !! 0)) == 1
       Assert.assert "indexToRowCol 80 return proper row" $ (fromMaybe 0 $ (indexToRowCol 80 !! 0)) == 8
       Assert.assert "indexToRowCol 80 return proper col" $ (fromMaybe 0 $ (indexToRowCol 80 !! 1)) == 8
+    test "subGridOpenList" do
+      let sgVect1 = subGridVect fullGrid1 0
+      Assert.assert "subGridOpenVals is correct for subGrid 0" $ (subGridOpenVals sgVect1) == [2, 4, 6, 7, 8, 9]
+    test "subGridCellByIndex" do
+      let sgVect0 = subGridVect fullGrid1 0
+      let sgVect1 = subGridVect fullGrid1 1
+      Assert.assert "subGridCellByIndex 0 at index 0 is correct" $ (cellVal $ subGridCellByIndex sgVect0 0) == 0
+      Assert.assert "subGridCellByIndex 1 at subGridIndex 3 is correct" $ (cellVal $ subGridCellByIndex sgVect1 3) == 6
+
+    test "subGridCell_ineligibilityTest" do
+      let sgVect = subGridVect fullGrid1 1
+      let sgCell0 = fromMaybe (cellDefault {}) $ sgVect !! 0
+      Assert.assert "subGridCell_ineligibilityTest works for subgrid 0, subGridCell 0"
+        $ subGridCell_ineligibilityTest sgCell0 == [4, 6]
+  suite "general ops" do
+    test "rowHasVal" do
+      Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
+      Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
+    test "colHasVal" do
+      Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
+      Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
 
 debugMe :: Effect Unit
 debugMe = do

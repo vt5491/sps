@@ -1,21 +1,15 @@
 module Test.Sps (spsMainTest) where
 
-import Prelude
--- import Prelude (Unit, discard, pure, unit)
 import Data.Maybe
-
-
-import Effect (Effect)
--- import Effect.Console (log)
-
-import Test.Unit (suite, test, timeout)
-import Test.Unit.Main (runTest)
-import Test.Unit.Assert as Assert
-import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons)
-import Node.Stdout (log) as NODE
-
-
+import Prelude
 import Sps
+
+import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons)
+import Effect (Effect)
+import Node.Stdout (log) as NODE
+import Test.Unit (suite, test, timeout)
+import Test.Unit.Assert as Assert
+import Test.Unit.Main (runTest)
 --
 -- -- import Node.FS.Aff as FS
 -- -- import Node.Encoding (Encoding(..))
@@ -63,14 +57,30 @@ spsMainTest = runTest do
   -- let tmp = debugMe
   -- abc = do :: Effect Unit
   --   log "hello"
-  suite "sync code" do
-    test "arithmetic" do
-      Assert.assert "2 + 2 should be 4" $ (2 + 2) == 4
-      Assert.assertFalse "2 + 2 shouldn't be 5" $ (2 + 2) == 5
-      Assert.equal 4 (2 + 2)
-      Assert.expectFailure "2 + 2 shouldn't be 5" $ Assert.equal 5 (2 + 2)
-    test "arithmetic2" do
-      Assert.assert "2 + 2 should be 4" $ (2 + 2) == 4
+  -- suite "sync code" do
+    -- test "arithmetic" do
+    --   Assert.assert "2 + 2 should be 4" $ (2 + 2) == 4
+    --   Assert.assertFalse "2 + 2 shouldn't be 5" $ (2 + 2) == 5
+    --   Assert.equal 4 (2 + 2)
+    --   Assert.expectFailure "2 + 2 shouldn't be 5" $ Assert.equal 5 (2 + 2)
+    -- test "arithmetic2" do
+    --   Assert.assert "2 + 2 should be 4" $ (2 + 2) == 4
+  suite "Grid Level ops" do
+    test "newGrid" do
+      let updateCell = gridCell fullGrid1 2 4
+      let newCell = cellDefault {val: 8, row: cellRow updateCell, col: cellCol updateCell}
+      let r = newGrid fullGrid1 newCell
+      Assert.assert "newGrid works" $ (cellVal $ gridCellByRowCol r 2 4) == 8
+    test "rowHasVal" do
+      Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
+      Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
+    test "colHasVal" do
+      Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
+      Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
+    -- test "checkColForVal" do
+    --   Assert.assert "col 0 contains a 1" $ checkColForVal fullGrid1 0 1 == true
+    --   Assert.assert "col 0 contains a 1" $ colHasVal fullGrid1 0 1 == true
+    --   Assert.assert "col 0 does not contain a 3" $ checkColForVal fullGrid1 0 3 == false
   suite "GridCell ops" do
     test "gridCell" do
       Assert.assert "gridRow works" $ length (gridRow testGrid1 0) == 9
@@ -78,6 +88,12 @@ spsMainTest = runTest do
       Assert.assert "gridCell works" $ (cellVal $ gridCell testGrid1 0 1) == 1
       Assert.assert "gridCell works on fullGrid1" $ cellVal (gridCell fullGrid1 1 3) == 6
       -- pure
+    test "cellCrossRowExistenceTest" do
+      -- let sgVect = subGridVect fullGrid1 1
+      -- let sgCell0 = fromMaybe (cellDefault {}) $ sgVect !! 0
+      let cell = gridCell fullGrid1 0 0
+      Assert.assert "cellCrossRowExistenceTest works for cell at 0,0" $ (cellCrossRowExistenceTest fullGrid1 cell 6)  == true
+      Assert.assert "cellCrossRowExistenceTest works for cell at 0,0" $ (cellCrossRowExistenceTest fullGrid1 cell 3)  == false
 
       -- Assert.assert "gridCell gets correct GridCell val" $ cellVal $ gridCell 0 0 == 0
   suite "GridRow ops" do
@@ -100,8 +116,12 @@ spsMainTest = runTest do
       Assert.assert "subgrid row 0, col 1 is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 1) ==  5
       Assert.assert "subgrid row 1, col 0 is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 3) ==  6
       Assert.assert "subgrid row 2, col 2 is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 8) ==  4
-      -- Assert.assert "second row, second col is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 4) ==  5
-      pure unit
+      Assert.assert "second row, second col is correct" $ cellVal (fromMaybeCell $ sgVect1 !! 4) ==  0
+      let sgVect3 = subGridVect fullGrid1 3
+      -- let tmp = printObj {o: sgVect3}
+      -- let tmp = printArray sgVect3
+      Assert.assert "subgrid number 3 has correct row for second subgrid row" $ cellRow (fromMaybeCell $ sgVect3 !! 3) == 4
+      -- pure unit
     test "indexToRowCol" do
       Assert.assert "indexToRowCol 0 works" $ fromMaybe 0 (indexToRowCol 0 !! 0 )== 0
       Assert.assert "indexToRowCol 1 returns proper row" $ (fromMaybe 0 $ (indexToRowCol 1 !! 0)) == 0
@@ -112,25 +132,36 @@ spsMainTest = runTest do
     test "subGridOpenList" do
       let sgVect1 = subGridVect fullGrid1 0
       Assert.assert "subGridOpenVals is correct for subGrid 0" $ (subGridOpenVals sgVect1) == [2, 4, 6, 7, 8, 9]
-    test "subGridCellByIndex" do
-      let sgVect0 = subGridVect fullGrid1 0
-      let sgVect1 = subGridVect fullGrid1 1
-      Assert.assert "subGridCellByIndex 0 at index 0 is correct" $ (cellVal $ subGridCellByIndex sgVect0 0) == 0
-      Assert.assert "subGridCellByIndex 1 at subGridIndex 3 is correct" $ (cellVal $ subGridCellByIndex sgVect1 3) == 6
+    -- test "subGridCellByIndex" do
+    --   let sgVect0 = subGridVect fullGrid1 0
+    --   let sgVect1 = subGridVect fullGrid1 1
+    --   Assert.assert "subGridCellByIndex 0 at index 0 is correct" $ (cellVal $ subGridCellByIndex sgVect0 0) == 0
+    --   Assert.assert "subGridCellByIndex 1 at subGridIndex 3 is correct" $ (cellVal $ subGridCellByIndex sgVect1 3) == 6
 
+      -- cellCrossRowExistenceTest
     test "subGridCell_ineligibilityTest" do
       let sgVect = subGridVect fullGrid1 1
       let sgCell0 = fromMaybe (cellDefault {}) $ sgVect !! 0
       Assert.assert "subGridCell_ineligibilityTest works for subgrid 0, subGridCell 0"
         $ subGridCell_ineligibilityTest sgCell0 == [4, 6]
-  suite "general ops" do
-    test "rowHasVal" do
-      Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
-      Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
-    test "colHasVal" do
-      Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
-      Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
+    test "subGridArbitrageForVal" do
+      Assert.assert "subGridArbitrageForVal pre-cond" $ (cellVal <$> (subGridVect fullGrid1 3) !! 8) == Just 0
+      let gridResult = subGridArbitrageForVal fullGrid1 3 1
+      let sgVect = subGridVect gridResult 3
+      Assert.assert "subGridArbitrageForVal in sg 3 for val=1 is an arbitrage"
+        $ (cellVal <$> (sgVect !! 8)) == Just 1
+  -- suite "general ops" do
+  --   test "rowHasVal" do
+  --     Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
+  --     Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
+  --   test "colHasVal" do
+  --     Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
+  --     Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
 
 debugMe :: Effect Unit
 debugMe = do
   NODE.log "hello"
+
+foreign import printObj :: {o :: {}} -> String
+-- foreign import printArray :: {a :: Array Cell } -> String
+foreign import printArray :: Array Cell  -> String

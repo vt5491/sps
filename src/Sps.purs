@@ -59,6 +59,11 @@ subGrid numbering:
 
 i.e. everything is ordered "from top left to the left and then down".
 
+cells are typically identied by row first and the col e.g. (row, col).  This is
+the opposite of (x,y) positioning where col would be first, since it corresponds
+to 'x'.  However, since the grid is row based, it makes sense to drill down by
+row first.
+
 -}
 doIt :: Int -> String
 doIt n = "hello from doIt"
@@ -87,6 +92,13 @@ type Grid = Array GridRow
 type SubGrid = Array Cell
 type Row = Array Int
 type Puzzle = Array Row
+type SubGridNum = Int
+type ColNum = Int
+type RowNum = Int
+type Val = Int
+-- type Col = 0..8
+-- data Col2 = 1 | 2
+-- data Row2 = A | B
 
 showRow :: Row -> String
 showRow r = "row=" <> show r
@@ -123,7 +135,7 @@ fullGrid1 = [
   gridRowFromString 1 "050600000",
   gridRowFromString 2 "103804007",
   gridRowFromString 3 "000082001",
-  gridRowFromString 5 "572000638",
+  gridRowFromString 4 "572000638",
   gridRowFromString 5 "400360000",
   gridRowFromString 6 "600108204",
   gridRowFromString 7 "000007080",
@@ -195,13 +207,33 @@ seedPuzzle x = map toInt elems
   where rows = S.split (S.Pattern "\n") x
         elems = map (S.split (S.Pattern ",")) rows
 
+-- Create a new grid with the new cell
+-- Basically loop over every cell in the grid, and if the cell matches the
+-- location of the passed cell, substitute the new cell into the output stream.
+newGrid :: Grid -> Cell -> Grid
+-- newGrid :: Grid -> Cell -> Array Cell
+-- newGrid g c = g
+newGrid g c = foldr topProcesser [] g
+  -- where topProcesser = (\x a -> concat [rowProcessor x, a])
+  where topProcesser = (\x a -> cons (rowProcessor x) a)
+  -- where topProcesser = (\x a -> rowProcessor x)
+        rowProcessor = (\row -> foldr (\y a -> cons (cellProcessor y) a) [] row)
+        cellProcessor = (\x -> if cellRow x == cellRow c &&  cellCol x == cellCol c
+                                 then c
+                                 else x)
+
+--   where newRowF = (\x a ->  if cellRow x == getRow c && getCol c
+--                                   then cons c a
+--                                   else cons c x )
+        -- newRow = foldr newRowF []
+
 -- rowHasVal fullGrid1 2 7
 -- 2 is the row, 7 is the val
-rowHasVal :: Grid -> Int -> Int -> Boolean
+rowHasVal :: Grid -> RowNum -> Int -> Boolean
 rowHasVal g rowNum val = (length $ filter (\x -> cellVal x == val) row ) > 0
   where row = gridRow g rowNum
 
-colHasVal :: Grid -> Int -> Int -> Boolean
+colHasVal :: Grid -> ColNum -> Int -> Boolean
 colHasVal g colNum val = (length $ filter (\x -> cellVal x == val) col ) > 0
   -- where row = gridRow g rowNum
   where col = gridCol g colNum
@@ -215,7 +247,7 @@ subGridIndex n = ((n / 3) * (gridWidth * 3)) + (mod n 3) * 3
 
 -- return a linear array of all the cells in a subgrid.  SubGrid 0 is the upper
 -- left corner, subgrid 2 is the top right, and subgrid 8 in bottmost right.
-subGridVect :: Grid -> Int -> Array Cell
+subGridVect :: Grid -> SubGridNum -> Array Cell
 -- subGridVect g n = [cellDefault {val : 7}]
 -- subGridVect g n = [ gridCell g row col]
 subGridVect g n = [
@@ -225,6 +257,12 @@ subGridVect g n = [
 ]
   where
         sgStart = subGridIndex n
+
+-- return a linear array of cells in the subGrid that are open, e.g do not
+-- have a definite value.
+subGridVectOpen :: Grid -> SubGridNum -> Array Cell
+subGridVectOpen g sgn = filter (\c -> cellVal c == 0) sg
+  where sg = subGridVect g sgn
 
 -- return the list of values that are "closed".  This is primarly here, so we
 -- calculate 'subGridOpenVals', which is dependent on this function.
@@ -245,12 +283,60 @@ subGridOpenVals sg = filter (\x -> not $ elem x closedVals) $ 1..gridWidth
 --         closedCells = filter (\x -> (cellVal x) /= 0) sg
 --         closedVals = map (\x -> cellVal x) closedCells
 --         openCells = filter (\cell -> not $ elem (cellVal cell) closedVals) sg
+-- foldr (\cell a -> if (not $ cellCrossRowExistenceTest fg cell 1) then cons cell a else a) [] svo
+
+-- basically a front-end to 'subGridArbitrageForVal'.  Call that function
+-- for each of the possible open values.
+-- subGridArbitrage :: Grid -> SubGridNum -> {found :: Int, grid :: Grid}
+-- subGridArbitrage g sgn = {found: 1, grid: g}
+-- subGridArbitrage g sgn = foldr (\x a -> )
+--   where openVals = subGridOpenVals $ subGridVect fg sgn
+
+subGridArbitrage :: Grid -> SubGridNum -> Grid
+subGridArbitrage g sgn = foldr (\x a -> subGridArbitrageForVal a sgn x) g openVals
+  where openVals = subGridOpenVals $ subGridVect g sgn
+
+-- traverse through the open slots of a subgrid to see if we can find
+-- a placement "arbitrage", e.g. be able to determine for sure that a
+-- value must belong to a particular (row, col).
+-- valSubGridTraversal :: Grid -> SubGridNum -> Val -> Grid
+subGridArbitrageForVal :: Grid -> SubGridNum -> Val -> Grid
+-- valSubGridTraversal g sgn v = g
+-- TODO: update the val of the single cell to have the passed value (if this)
+-- is an arbitrage case)
+subGridArbitrageForVal g sgn v = if (length r) == 1
+                              -- then newGrid g (fromMaybe (cellDefault {}) $ r !! 0)
+                              then replaceCell g (fromMaybe (cellDefault {}) $ r !! 0)
+                              else g
+  where sgvo =  subGridVectOpen g sgn
+        r = foldr (\cell a -> if (not $ cellCrossRowExistenceTest g cell v)
+          then cons cell a
+          else a) [] sgvo
+        replaceCell = (\x y -> newGrid x $ cellDefault {val: v, row: cellRow y, col: cellCol y})
+
+
 -- subGridCell_rowColTest :: SubGridCell ->
 -- given a subGrid cell, determine what values cannot be here by doing a
 -- grid level row and column check.
 subGridCell_ineligibilityTest :: SubGridCell -> Array Int
 -- subGridCell_ineligibilityTest c = [4,6]
 subGridCell_ineligibilityTest c = [4,6]
+
+-- do a grid-level row and column check to determine if, at the specified cell's
+-- position, if the passed value is present anywhere in row or column span.
+-- Basically, a "true" return type means the specified cell cannot be that
+-- value.  A false, doesn't mean it *is* that value, just that that value cannot
+-- be eliminated as a possibility.
+cellCrossRowExistenceTest :: Grid -> Cell -> Val -> Boolean
+cellCrossRowExistenceTest g c n = (rowHasVal g rowNum n) || (colHasVal g colNum n)
+  where rowNum = cellRow c
+        colNum = cellCol c
+        -- val = cellVal c
+
+-- checkColForVal :: Grid -> ColNum -> Int -> Boolean
+-- checkColForVal g c n = found > 0
+--   where f = (\row a -> if ((cellVal <$> (row !! c)) == Just n) then (a + 1) else a)
+--         found = foldr f 0 g
 
 
 ------------------
@@ -268,6 +354,12 @@ emptyCellArray = []
 cellVal :: Cell -> Int
 cellVal (Cell {val, row, col }) = val
 
+cellRow :: Cell -> Int
+cellRow (Cell {val, row, col }) = row
+
+cellCol :: Cell -> Int
+cellCol (Cell {val, row, col }) = col
+
 -- get a GridRow from a Grid
 gridRow :: Grid -> Int ->  GridRow
 gridRow g r = fromMaybe [] $ g !! r
@@ -280,20 +372,20 @@ gridCol g c = foldr (\r a -> cons (fromMaybe (cellDefault {}) $ r !! c) $ a)
   [] g
 
 -- get gridCell by row and col.
-gridCell :: Grid -> Int -> Int -> GridCell
+gridCell :: Grid -> RowNum -> ColNum -> GridCell
 gridCell g r c = fromMaybe (cellDefault {val: -1}) $ (fromMaybe [] $ g !! r) !! c
 
-gridCellByRowCol :: Grid -> Int -> Int -> GridCell
+gridCellByRowCol :: Grid -> RowNum -> ColNum -> GridCell
 gridCellByRowCol g r c = gridCell g r c
 
-gridCellByIndex :: Grid -> Int -> GridCell
+gridCellByIndex :: Grid -> Val -> GridCell
 -- gridCellByIndex g n = fromMaybe (cellDefault {val: -1}) $ g !! n
 gridCellByIndex g n = gridCellByRowCol g row col
   where rowCol = indexToRowCol n
         row = (fromMaybe (-1) (rowCol !! 0))
         col = (fromMaybe (-1) (rowCol !! 1))
 
-gridRowFromString :: Int -> String -> GridRow
+gridRowFromString :: RowNum -> String -> GridRow
 -- gridRowFromString2 n s = [cellDefault {val: 7}]
 -- gridRowFromString row s = reverse $ infoArray.rowAccum
 gridRowFromString row s =  infoArray.rowAccum

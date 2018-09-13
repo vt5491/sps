@@ -71,6 +71,16 @@ spsMainTest = runTest do
       let newCell = cellDefault {val: 8, row: cellRow updateCell, col: cellCol updateCell}
       let r = newGrid fullGrid1 newCell
       Assert.assert "newGrid works" $ (cellVal $ gridCellByRowCol r 2 4) == 8
+    test "newGrid2" do
+      let updateCell = gridCell fullGrid1 2 4
+      let newCell = cellDefault {val: 8, row: cellRow updateCell, col: cellCol updateCell}
+      let r = newGrid2 fullGrid1 [newCell]
+      Assert.assert "newGrid2 works with a single cell" $ (cellVal $ gridCellByRowCol r 2 4) == 8
+
+      let newCell2 = cellDefault {val: 4, row: 7, col: 7}
+      let r2 = newGrid2 fullGrid1 [newCell, newCell2]
+      Assert.assert "newGrid2 works with multiple cell" $ (cellVal $ gridCellByRowCol r2 2 4) == 8
+      Assert.assert "newGrid2 works with multiple cell" $ (cellVal $ gridCellByRowCol r2 7 7) == 4
     test "rowHasVal" do
       Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
       Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
@@ -157,6 +167,14 @@ spsMainTest = runTest do
   --   test "colHasVal" do
   --     Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
   --     Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
+  -- suite "utils" do
+  --   test "deltaGrid" do
+  --     let deltaCell = cellDefault {val: 1, row: 3, col: 2}
+  --     let fg2 = newGrid fullGrid1 deltaCell
+  --     Assert.assert "pre-cond for gridDelta" $ (cellVal $ gridCellByRowCol fg2 3 2) == 1
+  --     let gdelta = deltaGrid fullGrid1 fg2
+  --     Assert.assert "gridDelta has delta in proper place" $ (cellVal $ gridCellByRowCol gdelta 3 2) == 1
+  --     Assert.assert "gridDelta has zero in proper place" $ (cellVal $ gridCellByRowCol gdelta 2 0) == 0
 
 debugMe :: Effect Unit
 debugMe = do

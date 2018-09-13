@@ -80,6 +80,11 @@ newtype Cell = Cell { val :: Int, row :: Int, col :: Int}
 derive instance genericCell :: Generic Cell _
 instance showCell :: Show Cell where
   show = genericShow
+-- Note: equality is by pos only, independent of val
+instance eqCell :: Eq Cell where
+  -- eq (Cell {val, row, col} x) ( Cell {val, row, col} y) = (x.row == y.row)
+  eq (Cell a) ( Cell b) = (a.row == b.row && a.col == b.col)
+  -- eq x y = (x.row == y.row)
 
 type GridCell = Cell
 type SubGridCell = Cell
@@ -211,21 +216,74 @@ seedPuzzle x = map toInt elems
 -- Basically loop over every cell in the grid, and if the cell matches the
 -- location of the passed cell, substitute the new cell into the output stream.
 newGrid :: Grid -> Cell -> Grid
--- newGrid :: Grid -> Cell -> Array Cell
--- newGrid g c = g
 newGrid g c = foldr topProcesser [] g
-  -- where topProcesser = (\x a -> concat [rowProcessor x, a])
   where topProcesser = (\x a -> cons (rowProcessor x) a)
-  -- where topProcesser = (\x a -> rowProcessor x)
         rowProcessor = (\row -> foldr (\y a -> cons (cellProcessor y) a) [] row)
         cellProcessor = (\x -> if cellRow x == cellRow c &&  cellCol x == cellCol c
                                  then c
                                  else x)
 
---   where newRowF = (\x a ->  if cellRow x == getRow c && getCol c
---                                   then cons c a
---                                   else cons c x )
-        -- newRow = foldr newRowF []
+newGrid2 :: Grid -> Array Cell -> Grid
+-- newGrid2  g cs = g
+newGrid2 g candCells = foldr gridProcesser [] g
+  where gridProcesser = (\x a -> cons (rowProcessor x) a)
+        rowProcessor = (\row -> foldr (\baselineCell a -> cons (cellProcessor baselineCell) a) [] row)
+        -- cellProcessor = (\x -> if cellRow x == cellRow c &&  cellCol x == cellCol c
+        -- cellProcessor = (\x -> if any (\cand -> cellRow x == cellRow cand) cs &&  any (\cand -> cellCol x == cellCol cand))
+        -- cellProcessor = (\c ->  do
+        cellProcessor = (\baselineCell -> fromMaybe (baselineCell) $ do
+              -- is baseline cell in the array of candcells?
+              findCell baselineCell candCells
+        )
+        -- cellProcessor = (\c -> fromMaybe (cellDefault {}) $ do
+        --                           let mr = findCell c candCells
+        --                           r <- findCell c candCells
+        --                           -- pure r
+        --                           case mr of
+        --                             Nothing -> do
+        --                               let tmp = printMsg "path1"
+        --                               pure c
+        --                             -- Just Cell -> pure r
+        --                             -- _ -> pure r
+        --                             Just (Cell a) -> pure r
+        --                             -- Just (Cell) -> pure r
+        --                           -- if r == Nothing
+        --                           --   then c
+        --                           --   else r)
+        --                           -- pure unit
+        --                 )
+
+-- this is just a dummy for entry into repl.  ok to delete
+cellP :: Cell -> Array Cell -> Cell
+-- cellP baselineCell candCells = fromMaybe (cellDefault {val: -2}) $ do
+cellP baselineCell candCells = fromMaybe (baselineCell) $ do
+  -- let mr = findCell baselineCell candCells
+  -- r <- findCell baselineCell candCells
+  findCell baselineCell candCells
+  -- case mr of
+  --   Nothing -> do
+  --     let tmp = printMsg "path1"
+  --     pure baselineCell
+  --   Just (Cell a) -> do
+  --     let tmp = printMsg "path2"
+  --     pure r
+  --   _ -> do
+  --     let tmp = printMsg "path3"
+  --     pure (cellDefault {})
+
+-- newGrid2 :: Grid -> Array Cell -> Grid
+-- newGrid2 g cs = foldr topProcesser [] g
+--   where topProcesser = (\x a -> cons (rowProcessor x) a)
+--   -- where topProcesser = (\x a ->  cons $ fromMaybeCell ((rowProcessor x) !! 0)  a)
+--   -- where topProcesser = (\x a -> concat (rowProcessor x) a)
+--         rowProcessor = (\row -> foldr (\y a -> cons (candCellsProcessor y) a) [] row)
+--         candCellsProcessor = (\origCell ->
+--           foldr (\candCell a -> cons (cellProcessor origCell candCell) a) [] cs)
+--         cellProcessor = (\origCell candCell -> if cellRow origCell == cellRow candCell &&  cellCol origCell == cellCol candCell
+--                                  then candCell
+--                                  else origCell)
+--         concat = (\x y -> foldr (\x a -> cons x a) x y)
+
 
 -- rowHasVal fullGrid1 2 7
 -- 2 is the row, 7 is the val
@@ -277,13 +335,6 @@ subGridOpenVals :: SubGrid -> Array Int
 -- subGridOpenVals sg = []
 subGridOpenVals sg = filter (\x -> not $ elem x closedVals) $ 1..gridWidth
   where closedVals = subGridClosedVals sg
--- subGridOpenVals sg = map (\x -> not $ elem x closedVals) closedVals
--- subGridOpenVals sg = map (\x -> cellVal x) openCells
---   where
---         closedCells = filter (\x -> (cellVal x) /= 0) sg
---         closedVals = map (\x -> cellVal x) closedCells
---         openCells = filter (\cell -> not $ elem (cellVal cell) closedVals) sg
--- foldr (\cell a -> if (not $ cellCrossRowExistenceTest fg cell 1) then cons cell a else a) [] svo
 
 -- basically a front-end to 'subGridArbitrageForVal'.  Call that function
 -- for each of the possible open values.
@@ -340,13 +391,36 @@ cellCrossRowExistenceTest g c n = (rowHasVal g rowNum n) || (colHasVal g colNum 
 
 
 ------------------
--- Utility Functions
+-- Utility (utils) Functions
 ------------------
 indexToRowCol :: Int -> Array Int
 indexToRowCol n = [n / gridWidth, mod n gridWidth]
 
 emptyCellArray :: Array Cell
 emptyCellArray = []
+
+deltaGrid :: Grid -> Grid -> Grid
+deltaGrid g1 g2 = g1
+-- deltaGrid g1 g2 = newGrid
+
+-- find a cell with the same row and col from an array of cells (if any).
+-- If nothing found, return an empty array.
+-- findCell :: Cell -> Array Cell
+findCell :: Cell -> Array Cell -> Maybe Cell
+-- findCell baselineCell candCells = if ((matchRow == Nothing) || (matchCol == Nothing))
+--                   then Nothing
+--                   else matchRow
+findCell baselineCell candCells = do
+  find (\cand ->
+    (cellRow cand == cellRow baselineCell)
+    && (cellCol cand == cellCol baselineCell))
+    candCells
+  -- where matchRow = find (\cand -> (cellRow cand) == (cellRow baselineCell)) candCells
+  --       matchCol = find (\cand -> (cellCol cand) == (cellCol baselineCell)) candCells
+  --       match = find (\cand -> cellRow cand == cellRow baselineCell && cellCol cand == cellCol baselineCell)
+
+-- gridFormat :: Grid -> String
+-- gridFormat g = "123" \n\ "456"
 ------------------
 --- Getters etc
 ------------------
@@ -408,3 +482,5 @@ subGridCellByIndex sg n = cellDefault {}
 --------------------
 foreign import readPuzzleFile :: String -> String
 foreign import cellDefault :: forall r. {|r} -> Cell
+foreign import printGrid :: Grid -> String
+foreign import printMsg :: String -> String

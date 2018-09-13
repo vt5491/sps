@@ -37,6 +37,45 @@ exports.cellDefault = function (parms) {
   return cell;
 }
 
+exports.printGrid = function (g) {
+  // process.stdout.write("hello from printGrid\n");
+  // process.stdout.write("printGrid: g.length=" + g.length)
+  var closedCells = 0;
+  var openCells = 0;
+  process.stdout.write("\n  012 345 678");
+  for (var i = 0; i < g.length; i++) {
+    if (i % 3 == 0) {
+      process.stdout.write("\n ------------");
+    }
+    process.stdout.write("\n" + i);
+    var row = g[i];
+    for (var j=0; j < row.length; j++) {
+      if (j % 3 == 0) {
+        process.stdout.write("|");
+      }
+
+      if (row[j].val === 0) {
+        process.stdout.write("-");
+        openCells++;
+      }
+      else{
+        process.stdout.write( row[j].val.toString());
+        closedCells++;
+      }
+    }
+  }
+  // process.stdout.write("\n ------------\n");
+  process.stdout.write("\n\n");
+
+  return "closed=" + closedCells + ", open=" + openCells;
+}
+
+exports.printMsg = function (msg) {
+  process.stdout.write(msg + "\n");
+
+  return ""
+}
+
 // sps.showAbc("abcd");
 // process.stdout.write(sps.doIt(1));
 // sps.showRow([1,2,3]);

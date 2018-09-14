@@ -10,6 +10,7 @@ import Node.Stdout (log) as NODE
 import Test.Unit (suite, test, timeout)
 import Test.Unit.Assert as Assert
 import Test.Unit.Main (runTest)
+import Data.Foldable (elem)
 --
 -- -- import Node.FS.Aff as FS
 -- -- import Node.Encoding (Encoding(..))
@@ -31,15 +32,6 @@ tg2 = [
   [cellDefault]
 ]
 -- https://www.websudoku.com/?level=1&set_id=1096937905
--- 000051460
--- 050600000
--- 103804007
--- 000082001
--- 572000638
--- 400360000
--- 600108204
--- 000007080
--- 017240000
 fullGrid1 :: Grid
 fullGrid1 = [
   gridRowFromString 0 "000051460",
@@ -52,6 +44,9 @@ fullGrid1 = [
   gridRowFromString 7 "000007080",
   gridRowFromString 8 "017240000"
 ]
+
+fg :: Grid
+fg = fullGrid1
 
 spsMainTest = runTest do
   -- let tmp = debugMe
@@ -66,21 +61,21 @@ spsMainTest = runTest do
     -- test "arithmetic2" do
     --   Assert.assert "2 + 2 should be 4" $ (2 + 2) == 4
   suite "Grid Level ops" do
+    -- test "newGrid" do
+    --   let updateCell = gridCell fullGrid1 2 4
+    --   let newCell = cellDefault {val: 8, row: cellRow updateCell, col: cellCol updateCell}
+    --   let r = newGrid fullGrid1 newCell
+    --   Assert.assert "newGrid works" $ (cellVal $ gridCellByRowCol r 2 4) == 8
     test "newGrid" do
       let updateCell = gridCell fullGrid1 2 4
       let newCell = cellDefault {val: 8, row: cellRow updateCell, col: cellCol updateCell}
-      let r = newGrid fullGrid1 newCell
-      Assert.assert "newGrid works" $ (cellVal $ gridCellByRowCol r 2 4) == 8
-    test "newGrid2" do
-      let updateCell = gridCell fullGrid1 2 4
-      let newCell = cellDefault {val: 8, row: cellRow updateCell, col: cellCol updateCell}
-      let r = newGrid2 fullGrid1 [newCell]
-      Assert.assert "newGrid2 works with a single cell" $ (cellVal $ gridCellByRowCol r 2 4) == 8
+      let r = newGrid fullGrid1 [newCell]
+      Assert.assert "newGrid works with a single cell" $ (cellVal $ gridCellByRowCol r 2 4) == 8
 
       let newCell2 = cellDefault {val: 4, row: 7, col: 7}
-      let r2 = newGrid2 fullGrid1 [newCell, newCell2]
-      Assert.assert "newGrid2 works with multiple cell" $ (cellVal $ gridCellByRowCol r2 2 4) == 8
-      Assert.assert "newGrid2 works with multiple cell" $ (cellVal $ gridCellByRowCol r2 7 7) == 4
+      let r2 = newGrid fullGrid1 [newCell, newCell2]
+      Assert.assert "newGrid works with multiple cell" $ (cellVal $ gridCellByRowCol r2 2 4) == 8
+      Assert.assert "newGrid works with multiple cell" $ (cellVal $ gridCellByRowCol r2 7 7) == 4
     test "rowHasVal" do
       Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
       Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
@@ -160,21 +155,33 @@ spsMainTest = runTest do
       let sgVect = subGridVect gridResult 3
       Assert.assert "subGridArbitrageForVal in sg 3 for val=1 is an arbitrage"
         $ (cellVal <$> (sgVect !! 8)) == Just 1
-  -- suite "general ops" do
-  --   test "rowHasVal" do
-  --     Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
-  --     Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
-  --   test "colHasVal" do
-  --     Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
-  --     Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
-  -- suite "utils" do
-  --   test "deltaGrid" do
-  --     let deltaCell = cellDefault {val: 1, row: 3, col: 2}
-  --     let fg2 = newGrid fullGrid1 deltaCell
-  --     Assert.assert "pre-cond for gridDelta" $ (cellVal $ gridCellByRowCol fg2 3 2) == 1
-  --     let gdelta = deltaGrid fullGrid1 fg2
-  --     Assert.assert "gridDelta has delta in proper place" $ (cellVal $ gridCellByRowCol gdelta 3 2) == 1
-  --     Assert.assert "gridDelta has zero in proper place" $ (cellVal $ gridCellByRowCol gdelta 2 0) == 0
+  suite "row and col ops" do
+    -- test "rowArbitrage" do
+    --   Assert.assert "Row 4 has a row level arbitrage" $ (cellVal $ gridCellByRowCol (rowArbitrage fullGrid1 4) 4 4) == 1
+    test "rowClosedVals" do
+      -- Note: you can also call 'closeVals' (which operates on Array Cell) instead
+      let row0 = gridRow fg 0
+      let result = rowClosedVals row0
+      Assert.assert "Row 0 has 5 as closed val" $ (elem 5 result) == true
+      Assert.assert "Row 0 has 1 as closed val" $ elem 1 result
+      Assert.assert "Row 0 has 4 as closed val" $ (elem 4 result) == true
+      Assert.assert "Row 0 has 6 as closed val" $ elem 6 result
+      Assert.assert "Row 0 does not have 2 as closed val" $ not $ elem 2 result
+  suite "general ops" do
+    test "rowHasVal" do
+      Assert.assert "rowHasVal finds 5 on row 0" $ rowHasVal fullGrid1 0 5 == true
+      Assert.assert "rowHasVal does not find 7 on row 1" $ rowHasVal fullGrid1 1 7 == false
+    test "colHasVal" do
+      Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
+      Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
+  suite "utils" do
+    test "deltaGrid" do
+      let deltaCell = cellDefault {val: 1, row: 3, col: 2}
+      let fg2 = newGrid fullGrid1 [deltaCell]
+      Assert.assert "pre-cond for gridDelta" $ (cellVal $ gridCellByRowCol fg2 3 2) == 1
+      let gdelta = deltaGrid fullGrid1 fg2
+      Assert.assert "gridDelta has delta in proper place" $ (cellVal $ gridCellByRowCol gdelta 3 2) == 1
+      Assert.assert "gridDelta has zero in proper place" $ (cellVal $ gridCellByRowCol gdelta 2 0) == 0
 
 debugMe :: Effect Unit
 debugMe = do

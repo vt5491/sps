@@ -5,12 +5,12 @@ import Prelude
 import Sps
 
 import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons)
+import Data.Foldable (elem)
 import Effect (Effect)
 import Node.Stdout (log) as NODE
 import Test.Unit (suite, test, timeout)
 import Test.Unit.Assert as Assert
 import Test.Unit.Main (runTest)
-import Data.Foldable (elem)
 --
 -- -- import Node.FS.Aff as FS
 -- -- import Node.Encoding (Encoding(..))
@@ -82,6 +82,15 @@ spsMainTest = runTest do
     test "colHasVal" do
       Assert.assert "colHasVal finds 5 on col 1" $ colHasVal fullGrid1 1 5 == true
       Assert.assert "colHasVal does not find 2 on col 8" $ colHasVal fullGrid1 7 2 == false
+    test "gridArbitrageSolve" do
+      let sol = gridArbitrageSolve fg
+      let testCell = cellVal $ gridCell fgSol 0 4
+      let solRow0 = gridRow sol 0
+      let solRow8 = gridRow sol 8
+      -- Assert.assert "gridAritrageSolve solves fg" $ (cellVal $ gridCell fgSol 0 4) == testCell
+      -- random row compares should match.  This will have to do until we get a full grid compare.
+      Assert.assert "gridArbitrageSolve solves fg" $ (rowCompare solRow0 (gridRow fgSol 0)) == true
+      Assert.assert "gridArbitrageSolve solves fg" $ (rowCompare solRow8 (gridRow fgSol 8)) == true
     -- test "checkColForVal" do
     --   Assert.assert "col 0 contains a 1" $ checkColForVal fullGrid1 0 1 == true
     --   Assert.assert "col 0 contains a 1" $ colHasVal fullGrid1 0 1 == true
@@ -104,6 +113,11 @@ spsMainTest = runTest do
   suite "GridRow ops" do
     test "gridRowFromString" do
       Assert.assert "gridRowFromString works" $ length (gridRowFromString 1 "000051460") == 9
+    test "rowCompare" do
+      let row0 = gridRow fg 0
+      let row1 = gridRow fg 1
+      Assert.assert "rowCompare works" $ rowCompare row0 row0 == true
+      Assert.assert "rowCompare works" $ rowCompare row0 row1 == false
   suite "getters ops" do
     test "gridCol" do
       Assert.assert "gridCol returns array of proper length" $ length (gridCol fullGrid1 1)  == gridHeight
@@ -183,7 +197,7 @@ spsMainTest = runTest do
       Assert.assert "gridDelta has delta in proper place" $ (cellVal $ gridCellByRowCol gdelta 3 2) == 1
       Assert.assert "gridDelta has zero in proper place" $ (cellVal $ gridCellByRowCol gdelta 2 0) == 0
 
-debugMe :: Effect Unit
+debu
 debugMe = do
   NODE.log "hello"
 

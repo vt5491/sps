@@ -1,27 +1,24 @@
 module Sps where
 
-import Effect (Effect)
-import Effect.Console (log)
 import Data.Foldable
 import Data.Functor
 import Data.List.Types
 import Data.Maybe
--- import Data.String as S (length, fromString)
-import Data.String as S
-import Data.Int (fromString)
 import Prelude
+
+import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons, reverse)
+import Data.Either (fromRight)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Int (fromString)
 import Data.List as L
--- import Data.Set
-import Data.Array (filter, (..), (!!), index, length, toUnfoldable, fromFoldable, concat, concatMap, cons, snoc, uncons, reverse)
-
-import Node.Encoding (Encoding(..))
-import Node.FS.Sync (readTextFile)
-import Data.Either (fromRight)
+import Data.String as S
 import Data.String.Regex (Regex, regex, split, replace) as RE
 import Data.String.Regex.Flags (RegexFlags(..), global, multiline, noFlags) as REF
--- import Data.String.Regex.Flags (RegexFlags, RegexFlagsRec)
+import Effect (Effect)
+import Effect.Console (log)
+import Node.Encoding (Encoding(..))
+import Node.FS.Sync (readTextFile)
 import Partial.Unsafe (unsafePartial)
 
 {-
@@ -152,6 +149,32 @@ fullGrid1 = [
   gridRowFromString 8 "017240000"
 ]
 
+-- fg solution
+--    012 345 678
+--  ------------
+-- 0|728|951|463
+-- 1|954|673|812
+-- 2|163|824|957
+--  ------------
+-- 3|396|782|541
+-- 4|572|419|638
+-- 5|481|365|729
+--  ------------
+-- 6|635|198|274
+-- 7|249|537|186
+-- 8|817|246|395
+fullGrid1Sol = [
+  gridRowFromString 0 "728951463",
+  gridRowFromString 1 "954673812",
+  gridRowFromString 2 "163824957",
+  gridRowFromString 3 "396782541",
+  gridRowFromString 4 "572419638",
+  gridRowFromString 5 "481365729",
+  gridRowFromString 5 "635198274",
+  gridRowFromString 5 "249537186",
+  gridRowFromString 5 "817246395"
+]
+
 unitGrid :: Grid
 unitGrid = [
   gridRowFromString 0 "000000000",
@@ -168,6 +191,8 @@ unitGrid = [
 fg :: Grid
 fg = fullGrid1
 
+fgSol :: Grid
+fgSol = fullGrid1Sol
 
 gr0 = fromMaybe [] $ fullGrid1 !! 0
 
@@ -187,7 +212,7 @@ spsMain = do
   let r = removeComments $ removeCr $ readPuzzleFile "data/puzzles/ez_6843808492.csv"
   log $ r <> "-js"
   let puz = seedPuzzle r
-  log $ "puz=" <> showPuzzle puz
+  log $ "puz=" <> "\n" <> showPuzzle puz
   pure unit
 
 doSomething :: Int
@@ -302,6 +327,26 @@ gridArbitrageRound g = foldr (\i a -> subGridArbitrage a i) g $ 0..(gridWidth - 
 --                                  else origCell)
 --         concat = (\x y -> foldr (\x a -> cons x a) x y)
 
+-- Keep calling 'gridArbitrageRound' until cells no longer flip, or the puzzle
+-- is completely solved.
+gridArbitrageSolve :: Grid -> Grid
+-- gridAritrageSolve g = fgSol
+-- gridAritrageSolve g = fgSol
+-- gridAritrageSolve g = fgSol
+gridArbitrageSolve g = gridArbitrageSolveLoop g 1
+
+gridArbitrageSolveLoop :: Grid -> Int -> Grid
+-- gridAritrageSolveLoop g i = fgSol
+gridArbitrageSolveLoop g closedDelta
+  | closedDelta == 0 = g
+  | closedDelta >= 1 = gridArbitrageSolveLoop newGrid (gridClosedCells $ deltaGrid g newGrid)
+    where newGrid = gridArbitrageRound g
+  | otherwise = g
+-- gridAritrageSolveLoop g closedDelta
+--   | closedDelta == 0 = newGrid
+--   -- | closedDelta > 0 = gridAritrageSolveLoop newGrid (gridClosedCells $ deltaGrid g newGrid)
+--   | closedDelta > 0 = newGrid
+--       where newGrid = gridArbitrageRound g
 
 -- rowHasVal fullGrid1 2 7
 -- 2 is the row, 7 is the val
@@ -313,6 +358,10 @@ colHasVal :: Grid -> ColNum -> Int -> Boolean
 colHasVal g colNum val = (length $ filter (\x -> cellVal x == val) col ) > 0
   -- where row = gridRow g rowNum
   where col = gridCol g colNum
+
+gridClosedCells :: Grid -> Int
+gridClosedCells g = foldr f 0 $ 0..(gridWidth - 1)
+  where f= (\i a -> a + (length $ closedCells (gridRow g i)))
 --------
 -- SubGrid Functions
 --------
@@ -404,6 +453,7 @@ cellCrossRowExistenceTest g c n = (rowHasVal g rowNum n) || (colHasVal g colNum 
         colNum = cellCol c
         -- val = cellVal c
 
+
 cellColExistenceTest :: Grid -> Cell -> Val -> Boolean
 -- cellColExistenceTest g c v = true
 cellColExistenceTest g c n = colHasVal g colNum n
@@ -436,6 +486,19 @@ rowClosedVals r = closedVals r
 
 rowOpenVals :: GridRow -> Array Int
 rowOpenVals r = openVals r
+
+rowCompare :: GridRow -> GridRow -> Boolean
+rowCompare r1 r2 =
+  (cellVal <$> r1 !! 0) == (cellVal <$> r2 !! 0)
+  && (cellVal <$> r1 !! 1) == (cellVal <$> r2 !! 1)
+  && (cellVal <$> r1 !! 2) == (cellVal <$> r2 !! 2)
+  && (cellVal <$> r1 !! 3) == (cellVal <$> r2 !! 3)
+  && (cellVal <$> r1 !! 4) == (cellVal <$> r2 !! 4)
+  && (cellVal <$> r1 !! 5) == (cellVal <$> r2 !! 5)
+  && (cellVal <$> r1 !! 6) == (cellVal <$> r2 !! 6)
+  && (cellVal <$> r1 !! 7) == (cellVal <$> r2 !! 7)
+  && (cellVal <$> r1 !! 8) == (cellVal <$> r2 !! 8)
+-- (cellVal <$> r0 !! 0) == Just 1
 
 
 ------------------
